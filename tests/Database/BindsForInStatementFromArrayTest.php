@@ -3,7 +3,9 @@
 
 namespace LogikosTest\Database;
 
+use Logikos\Database\BindsForInStatementFromArray;
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Assert;
 
 class BindsForInStatementFromArrayTest extends TestCase {
   public $origSql = 'IN(:placeholder)';
@@ -11,69 +13,29 @@ class BindsForInStatementFromArrayTest extends TestCase {
 
   public function testGetOriginalSql() {
     $sut = new BindsForInStatementFromArray($this->origSql, $this->name);
-    $this->assertSame($this->origSql, $sut->getOrigSql());
-    $this->assertSame($this->name, $sut->getName());
+    Assert::assertSame($this->origSql, $sut->getOrigSql());
+    Assert::assertSame($this->name, $sut->getName());
   }
 
   public function testBinds() {
-    $this->markTestSkipped();
     $data = ['a', 'b', 'c'];
     $sut = new BindsForInStatementFromArray($this->origSql, $this->name, $data);
-    var_dump($sut->sql(), $sut->binds());
-  }
-}
-
-class BindsForInStatementFromArray {
-  private $origSql;
-  private $name;
-  private $data = [];
-  private $placeholders = [];
-  private $binds = [];
-  private $sql;
-
-  public function __construct($origSql, $name, $data = []) {
-    $this->origSql = $origSql;
-    $this->name = $name;
-    $this->data = $data;
-    $this->process();
-  }
-
-  public function getOrigSql() { return $this->origSql; }
-  public function getName()    { return $this->name;    }
-  public function binds()      { return $this->binds;   }
-  public function sql()        { return $this->sql;     }
-
-  private function process() {
-    foreach ($this->data as $value)
-      $this->processBind($value);
-
-    $this->buildSql();
-  }
-
-  private function processBind($value) {
-    $key = $this->genKey();
-    $this->binds[$key] = $value;
-    array_push($this->placeholders, $key);
-  }
-
-  private function genKey() {
-    static $i = 0;
-    return uniqid($this->placeholderPrefix($i));
-  }
-
-  private function buildSql() {
-    $this->sql = str_replace(
-        ":{$this->name}",
-        $this->placeholderString(),
-        $this->origSql
+    Assert::assertEquals(3, count($sut->binds()));
+    Assert::assertEquals($data, array_values($sut->binds()));
+    foreach($sut->binds() as $k=>$v) {
+      Assert::assertContains($k, $sut->sql());
+    }
+    Assert::assertRegExp(
+        "/IN\(\:placeholder[^,]+,\s?\:placeholder[^,]+,\s?\:placeholder[^,]+\)/",
+        $sut->sql()
     );
   }
 
-  private function placeholderString(): string {
-    return ':' . implode(', :', $this->placeholders);
-  }
-
-  private function placeholderPrefix($i): string {
-    return $this->name . $i++ . '_';
+  public function test_WhenNameNotFoundAsPlaceholderInOrigSql_ExpectException() {
+    $this->expectException(\Exception::class);
+    new BindsForInStatementFromArray(
+        'IN(:placeholder)',
+        'foo'
+    );
   }
 }

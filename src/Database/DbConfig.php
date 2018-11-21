@@ -21,6 +21,18 @@ class DbConfig extends StrictConfig {
   const DEFAULT_PG_PORT         = 5432;
   const DEFAULT_SQLITE_LOCATION = ':memory:';
 
+  public static function fromEnv() {
+    $driver = getenv('DB_DRIVER') ?? 'mysql';
+    return new self([
+        'driver' => 'mysql',
+        'host'   => getenv('DB_HOST'),
+        'name'   => getenv('DB_NAME'),
+        'user'   => getenv('DB_USER'),
+        'pass'   => getenv('DB_PASS'),
+        'port'   => getenv('DB_PORT') ?? self::DEFAULT_MYSQL_PORT
+    ]);
+  }
+
   protected function initialize() {
 
     $this->addFields(
